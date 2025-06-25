@@ -40,5 +40,5 @@ void loop() {
 Serial.printf("%d,%d,%d,%d,%d\n", dedo1, dedo2, dedo3, dedo4, dedo5);
 
 
-  delay(50);  // Espera antes de la próxima lectura
+  delay(5000);  // Espera antes de la próxima lectura
 }

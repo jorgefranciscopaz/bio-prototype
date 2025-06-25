@@ -4,12 +4,25 @@ import numpy as np
 import pandas as pd
 import os
 import time
+import firebase_admin
+from firebase_admin import credentials, db
+
+# Solo importar msvcrt si estás en Windows
+import platform
+if platform.system() == "Windows":
+    import msvcrt
+else:
+    print("⚠️ Este script usa 'msvcrt' que solo funciona en Windows. Presionar Enter para enviar a Firebase no está disponible en otros sistemas.")
+    msvcrt = None
 
 # === Configuración ===
 PUERTO = "COM6"             # Cambia si es necesario
 BAUDIOS = 115200
 MODELO_PATH = os.path.join("AI", "modelo", "modelo.pkl")
 ESCALADOR_PATH = os.path.join("AI", "modelo", "escalador.pkl")
+FIREBASE_CRED = os.path.join("AI", "config", "credenciales.json")
+FIREBASE_URL = "https://wawabot-f1358-default-rtdb.firebaseio.com/"
+RUTA_FIREBASE = "/guante/oracion_actual"
 
 # === Cargar modelo y escalador ===
 if not os.path.exists(MODELO_PATH) or not os.path.exists(ESCALADOR_PATH):
@@ -19,10 +32,7 @@ if not os.path.exists(MODELO_PATH) or not os.path.exists(ESCALADOR_PATH):
 modelo = joblib.load(MODELO_PATH)
 escalador = joblib.load(ESCALADOR_PATH)
 
-# === Inicializar oración ===
-oracion = ""
-
-# === Iniciar conexión serial ===
+# === Inicializar conexión serial ===
 try:
     arduino = serial.Serial(PUERTO, BAUDIOS, timeout=1)
     time.sleep(2)
@@ -31,38 +41,18 @@ except serial.SerialException:
     print(f"❌ No se pudo abrir el puerto {PUERTO}. Verifica la conexión de la ESP32.")
     exit()
 
-# === Bucle de predicción y construcción de oración ===
-try:
-    while True:
-        linea = arduino.readline().decode('utf-8').strip()
-        if linea:
-            datos = linea.split(",")
-            if len(datos) == 5:
-                try:
-                    entrada = np.array([[int(v) for v in datos]])
-                    entrada_df = pd.DataFrame(entrada, columns=["Dedo1", "Dedo2", "Dedo3", "Dedo4", "Dedo5"])
-                    entrada_esc = escalador.transform(entrada_df)
-                    letra = modelo.predict(entrada_esc)[0]
-                    oracion += letra
-                    print(f"🔤 Letra detectada: {letra}  | 📝 Oración actual: {oracion}")
-                except ValueError:
-                    print("⚠️ Lectura inválida:", datos)
-except KeyboardInterrupt:
-    print("\n🛑 Lectura detenida por el usuario.")
-    print(f"✏️ Oración final: {oracion}")
-
-import firebase_admin
-from firebase_admin import credentials, db
-
-# === Inicializar Firebase Admin ===
-cred_path = os.path.join("AI", "python", "config", "credenciales.json")
+# === Inicializar Firebase ===
 if not firebase_admin._apps:
-    cred = credentials.Certificate(cred_path)
-    firebase_admin.initialize_app(cred, {
-        'databaseURL': "https://wawabot-f1358-default-rtdb.firebaseio.com/" #URL DE TU BASE DE DATOS
-    })
+    if not os.path.exists(FIREBASE_CRED):
+        print("❌ Archivo de credenciales de Firebase no encontrado.")
+        exit()
+    cred = credentials.Certificate(FIREBASE_CRED)
+    firebase_admin.initialize_app(cred, {'databaseURL': FIREBASE_URL})
 
-# === Enviar oración al presionar Enter ===
+# === Inicializar oración ===
+oracion = ""
+
+# === Bucle principal ===
 try:
     while True:
         linea = arduino.readline().decode('utf-8').strip()
@@ -77,16 +67,17 @@ try:
                     oracion += letra
                     print(f"🔤 Letra detectada: {letra}  | 📝 Oración: {oracion}")
                 except ValueError:
-                    print("⚠️ Lectura inválida:", datos)
+                    print("⚠️ Datos inválidos recibidos:", datos)
 
-        # Presionar Enter en consola para enviar a Firebase
-        if msvcrt.kbhit():
+        # Si estás en Windows y se presiona Enter, enviar oración
+        if msvcrt and msvcrt.kbhit():
             key = msvcrt.getch()
             if key == b'\r':  # Enter
-                ref = db.reference("/guante/oracion_actual")
+                ref = db.reference(RUTA_FIREBASE)
                 ref.set(oracion)
                 print(f"✅ Oración enviada a Firebase: {oracion}")
                 oracion = ""  # limpiar oración
 
 except KeyboardInterrupt:
-    print("\n🛑 Lectura interrumpida.")
+    print("\n🛑 Lectura interrumpida por el usuario.")
+    print(f"✏️ Última oración: {oracion}")
