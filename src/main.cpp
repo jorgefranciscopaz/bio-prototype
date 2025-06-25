@@ -37,8 +37,8 @@ void loop() {
 
   int promedio = calcularPromedioTotal(dedo1, dedo2, dedo3, dedo4, dedo5);
 
-  Serial.printf("Gordo:%d | Indice:%d | Medio:%d | Anular:%d | Meñique:%d | Promedio:%d\n",
-                dedo1, dedo2, dedo3, dedo4, dedo5, promedio);
+Serial.printf("%d,%d,%d,%d,%d\n", dedo1, dedo2, dedo3, dedo4, dedo5);
 
-  delay(700);  // Espera antes de la próxima lectura
+
+  delay(50);  // Espera antes de la próxima lectura
 }

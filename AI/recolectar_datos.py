@@ -6,7 +6,7 @@ import os
 # CONFIGURACIÓN:
 PUERTO = "COM6"            # Cambia según tu ESP32
 BAUDIOS = 115200
-CARPETA_DATOS = "AI/data"  # Ruta relativa desde la raíz del proyecto
+CARPETA_DATOS = os.path.join("AI", "data")  # Ruta relativa desde la raíz del proyecto
 
 # Pedir letra
 letra = input("🔤 Ingrese la letra que está capturando (ej. A, B, C): ").strip().upper()
@@ -22,7 +22,7 @@ try:
     time.sleep(2)
 
     print(f"✅ Recolección iniciada para letra '{letra}'. Guardando en: {ruta_completa}")
-    with open(ruta_completa, mode='w', newline='') as archivo_csv:
+    with open(ruta_completa, mode='a', newline='') as archivo_csv:  # 👈 modo 'a' para agregar
         writer = csv.writer(archivo_csv)
 
         while True:
