@@ -1,0 +1,22 @@
+# === Librerías base ===
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.5.2
+joblib==1.4.2
+
+# === Visión por computadora ===
+opencv-python==4.10.0.84
+mediapipe==0.10.14
+
+# === Google / Firebase ===
+firebase-admin==6.5.0
+grpcio==1.66.1
+grpcio-status==1.66.1
+protobuf==4.25.3
+google-api-core==2.19.2
+google-auth==2.35.0
+google-cloud-storage==2.18.2
+
+# === Utilidades ===
+requests==2.32.3
+tqdm==4.66.5

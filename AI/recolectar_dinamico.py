@@ -6,10 +6,12 @@ import os
 import time
 from collections import deque
 
-# === Configuración ===
-CARPETA_DATOS = os.path.join("AI", "data", "dinamicos")
+# === Rutas base ===
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raíz del proyecto
+CARPETA_DATOS = os.path.join(BASE_DIR, "AI", "data", "dinamicos")
 os.makedirs(CARPETA_DATOS, exist_ok=True)
 
+# === Configuración ===
 gesto = input("🤟 Ingresa el nombre del gesto dinámico (ej. HOLA, GRACIAS): ").strip().upper()
 archivo_salida = os.path.join(CARPETA_DATOS, f"{gesto}.csv")
 
@@ -18,8 +20,7 @@ hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_c
 mp_draw = mp.solutions.drawing_utils
 
 cap = cv2.VideoCapture(0)
-fps = cap.get(cv2.CAP_PROP_FPS)
-ventana = deque(maxlen=20)  # guarda los últimos 20 frames (~1 seg aprox.)
+ventana = deque(maxlen=20)
 grabando = False
 contador = 0
 
@@ -41,14 +42,13 @@ while cap.isOpened():
             ventana.append(coords)
 
     if grabando and len(ventana) == ventana.maxlen:
-        # Convertir secuencia a una sola fila (promedio temporal)
         seq_promedio = np.mean(ventana, axis=0)
         df = pd.DataFrame([seq_promedio.tolist() + [gesto]])
         df.to_csv(archivo_salida, mode='a', header=False, index=False)
         contador += 1
         ventana.clear()
         grabando = False
-        print(f"✅ Secuencia {contador} guardada.")
+        print(f"✅ Secuencia {contador} guardada en {archivo_salida}")
 
     cv2.putText(frame, f"Gesto: {gesto}", (10, 40),
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
