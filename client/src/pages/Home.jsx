@@ -1,33 +1,41 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import CameraFeed from "../components/CameraFeed";
 import ToggleAIButton from "../components/ToggleAIButton";
 import PredictionBox from "../components/PredictionBox";
-
 
 export default function Home() {
   const [isAIActive, setIsAIActive] = useState(false);
   const [prediction, setPrediction] = useState("");
   const [status, setStatus] = useState("IA desactivada");
+  const videoRef = useRef(null); // 👈 ESTE ref
 
   useEffect(() => {
     let interval;
-
-    const fetchPrediction = async () => {
+    const sendFrameToAPI = async () => {
+      if (!videoRef.current) return;
+      const canvas = document.createElement("canvas");
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      const imageBase64 = canvas.toDataURL("image/jpeg");
       try {
-        const response = await fetch("http://localhost:5000/predict");
-        if (!response.ok) throw new Error("Error en la conexión con el backend");
-        const data = await response.json();
+        const res = await fetch("http://localhost:5000/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: imageBase64 }),
+        });
+        const data = await res.json();
         setPrediction(data.prediccion || "Sin detección");
-      } catch (error) {
-        console.error("❌ Error al obtener predicción:", error);
+      } catch (err) {
+        console.error(err);
         setPrediction("Error de conexión");
       }
     };
 
     if (isAIActive) {
-      setStatus("IA activada - analizando gestos...");
-      fetchPrediction(); // Primera llamada inmediata
-      interval = setInterval(fetchPrediction, 1000); // Llamadas cada 1s
+      setStatus("IA activada - analizando...");
+      interval = setInterval(sendFrameToAPI, 1000);
     } else {
       setStatus("IA desactivada");
       clearInterval(interval);
@@ -38,20 +46,10 @@ export default function Home() {
   }, [isAIActive]);
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center space-y-6 text-white px-4">
-      {/* Cámara */}
-      <CameraFeed isActive={isAIActive} />
-
-      {/* Botón de encendido/apagado de IA */}
-      <ToggleAIButton
-        isActive={isAIActive}
-        onToggle={() => setIsAIActive(!isAIActive)}
-      />
-
-      {/* Estado de conexión / predicción */}
-      <div className="text-sm text-gray-400">{status}</div>
-
-      {/* Resultado de predicción */}
+    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white space-y-4">
+      <CameraFeed ref={videoRef} isActive={isAIActive} />
+      <ToggleAIButton isActive={isAIActive} onToggle={() => setIsAIActive(!isAIActive)} />
+      <p className="text-gray-400">{status}</p>
       <PredictionBox prediction={prediction} />
     </div>
   );
