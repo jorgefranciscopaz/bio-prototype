@@ -38,20 +38,21 @@ ventana_pred = deque(maxlen=15)
 ultima_pred = None
 contador_estabilidad = 0
 gesto_estable = None
-frames_estables_requeridos = 8
-
-# === CONTROL DE TIEMPO ENTRE CAMBIOS (2s) ===
-ultima_actualizacion = time.time()
-lapso_minimo = 2.0  # segundos entre cambios de gesto mostrado
 gesto_mostrado = None
+
+# === PARÁMETROS DE ESTABILIDAD ===
+frames_estables_requeridos = 8
+umbral_confianza = 0.8  # confianza mínima del modelo
+cooldown_segundos = 2.0  # tiempo mínimo entre cambios visibles
+ultima_actualizacion = time.time()
 
 # === INICIAR CÁMARA ===
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-
 print("🎥 Iniciando cámara... Presiona 'q' para salir")
 
+# === BUCLE PRINCIPAL ===
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
@@ -80,7 +81,7 @@ while cap.isOpened():
                     X = scaler_dinamico.transform([seq])
                     modelo = modelo_dinamico
 
-                # --- Predicción ---
+                # --- Predicción con probabilidad (si está disponible) ---
                 try:
                     probs = modelo.predict_proba(X)[0]
                     max_prob = np.max(probs)
@@ -89,13 +90,13 @@ while cap.isOpened():
                     max_prob = 1.0
                     pred = modelo.predict(X)[0]
 
-                # --- Filtro de confianza ---
-                if max_prob > 0.7:
+                # --- Filtro de confianza y coherencia ---
+                if max_prob > umbral_confianza:
                     ventana_pred.append(pred)
                 else:
                     continue
 
-                # --- Suavizado por votación ---
+                # --- Suavizado temporal (moda) ---
                 gesto_mas_frecuente = Counter(ventana_pred).most_common(1)[0][0]
 
                 # --- Verificar estabilidad ---
@@ -104,33 +105,30 @@ while cap.isOpened():
                 else:
                     contador_estabilidad = 0
 
+                # --- Confirmar gesto estable ---
                 if contador_estabilidad >= frames_estables_requeridos:
                     gesto_estable = gesto_mas_frecuente
 
                 ultima_pred = gesto_mas_frecuente
 
-                # --- Mostrar solo si pasó el lapso de tiempo ---
+                # --- Actualizar solo si pasó el tiempo mínimo y hay estabilidad ---
                 ahora = time.time()
-                if gesto_estable and (ahora - ultima_actualizacion >= lapso_minimo):
+                if (gesto_estable 
+                    and (ahora - ultima_actualizacion >= cooldown_segundos)
+                    and gesto_estable != gesto_mostrado):
                     gesto_mostrado = gesto_estable
                     ultima_actualizacion = ahora
 
-                # --- Mostrar el gesto actual en pantalla ---
-                if gesto_mostrado:
-                    cv2.putText(frame, f"{tipo.upper()}: {gesto_mostrado}", (30, 50),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
-                else:
-                    cv2.putText(frame, f"{tipo.upper()}: ...", (30, 50),
-                                cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 255), 2)
-
-            # --- Dibujo de landmarks ---
+            # --- Dibujar landmarks ---
             mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
+    # --- Mostrar gesto actual en pantalla ---
+    if gesto_mostrado:
+        cv2.putText(frame, f"Gesto: {gesto_mostrado}", (30, 50),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 3)
     else:
-        # Si no se detectan manos, mantener el último gesto visible
-        if gesto_mostrado:
-            cv2.putText(frame, f"ULTIMO: {gesto_mostrado}", (30, 50),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1.2, (255, 255, 0), 2)
+        cv2.putText(frame, "Detectando...", (30, 50),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 255), 2)
 
     cv2.imshow("AI Sign Language", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
