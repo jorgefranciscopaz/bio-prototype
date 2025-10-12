@@ -1,28 +1,70 @@
-# === MODELOS Y DATOS GRANDES ===
-AI/modelos/
-AI/data/
-*.pkl
-*.h5
-*.pt
-*.onnx
-*.joblib
-*.csv
-*.zip
-*.tar
-*.npz
-*.npy
-
-# === ARCHIVOS DE ENTRENAMIENTO TEMPORAL ===
+# === ENTORNOS Y CONFIGURACIÓN ===
+.venv/
+.pio/
+.vscode/
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
 *.log
 *.tmp
-*.bak
 
-# === ENTORNOS Y DEPENDENCIAS ===
-.venv/
-env/
-*.env
+# === MODELOS Y ESCALADORES (.pkl) ===
+AI/modelos/*.pkl
+
+# === DATOS DE ENTRENAMIENTO (.csv) ===
+AI/data/estaticos/*.csv
+AI/data/dinamicos/*.csv
+
+# === ARCHIVOS TEMPORALES Y CACHE ===
+AI/__pycache__/
+AI/*/__pycache__/
+AI/*.log
 
 # === ARCHIVOS DE SISTEMA ===
 .DS_Store
 Thumbs.db
+
+# === CONFIGURACIÓN Y ENTORNOS ===
+.env
+*.ini
+*.json
+
+# === RESULTADOS, BACKUPS Y EXPORTS ===
+*.bak
+*.zip
+*.tar
+*.gz
+*.xlsx
+*.xls
+*.h5
+
+# === COMPILACIONES O BINARIOS (PLATFORMIO / C++) ===
+client/.pio/
+include/*.o
+include/*.obj
+lib/*.o
+lib/*.obj
+src/*.o
+src/*.obj
+test/*.o
+test/*.obj
+build/
+dist/
+
+# === ARCHIVOS DE IDE ===
+.idea/
+*.code-workspace
+
+# === ARCHIVOS GENERADOS POR USUARIO ===
+*.mp4
+*.avi
+*.jpg
+*.png
+*.jpeg
+
+# === ARCHIVOS DE DOCUMENTACIÓN Y TEMPORALES ===
+*.pdf
+*.docx
+*.tmp
+*.bak
