@@ -1,0 +1,74 @@
+body {
+  margin: 0;
+  background-color: #0f0f0f;
+  color: white;
+  font-family: 'Inter', sans-serif;
+}
+
+header {
+  background-color: rgba(26, 26, 26, 0.6);
+  border-bottom: 1px solid #2a2a2a;
+  padding: 20px 0;
+  backdrop-filter: blur(10px);
+}
+
+h1 {
+  background: linear-gradient(to right, #ff6600, #ffb347, #ffaa33);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.video-box {
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  background: rgba(30, 30, 30, 0.5);
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.control-bar {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.btn-camera-on {
+  background-color: #e53935;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.btn-camera-off {
+  background-color: #43a047;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.btn-mode {
+  background-color: #555;
+  color: white;
+  border-radius: 8px;
+  padding: 10px 16px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-mode-active {
+  background-color: #007aff;
+}
+
+/* === Cámara en espejo (solo visual) === */
+video {
+  transform: scaleX(-1);
+  -webkit-transform: scaleX(-1);
+}

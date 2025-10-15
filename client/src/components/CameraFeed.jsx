@@ -2,43 +2,24 @@ import { forwardRef, useEffect } from "react";
 
 const CameraFeed = forwardRef(({ isActive }, ref) => {
   useEffect(() => {
-    let stream;
-
+    if (!isActive) return;
+    const video = ref.current;
     const startCamera = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        if (ref.current) {
-          ref.current.srcObject = stream;
-          console.log("✅ Cámara iniciada correctamente");
-        }
-      } catch (err) {
-        console.error("❌ Error al acceder a la cámara:", err);
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch (error) {
+        console.error("Error accediendo a la cámara:", error);
       }
     };
-
-    if (isActive) {
-      startCamera();
-    } else {
-      if (ref.current && ref.current.srcObject) {
-        ref.current.srcObject.getTracks().forEach(track => track.stop());
-        ref.current.srcObject = null;
-      }
-    }
+    startCamera();
 
     return () => {
-      if (stream) stream.getTracks().forEach(track => track.stop());
+      if (video.srcObject) video.srcObject.getTracks().forEach((t) => t.stop());
     };
-  }, [isActive, ref]);
+  }, [isActive]);
 
-  return (
-    <video
-      ref={ref}
-      autoPlay
-      playsInline
-      muted
-      className="rounded-2xl shadow-lg w-[480px] h-[360px] border border-gray-700 object-cover"
-    />
-  );
+  return <video ref={ref} autoPlay playsInline width="640" height="480" />;
 });
 
 export default CameraFeed;

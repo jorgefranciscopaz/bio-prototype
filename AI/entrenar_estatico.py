@@ -6,6 +6,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
 import joblib
+from tqdm import tqdm
+import time
 
 # === RUTAS BASE ===
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raíz del proyecto
@@ -30,15 +32,38 @@ df_total = pd.concat(dfs, ignore_index=True)
 X = df_total.drop("Letra", axis=1)
 y = df_total["Letra"]
 
-# === ESCALADO Y ENTRENAMIENTO ===
+# === ESCALADO ===
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42, stratify=y)
-modelo = RandomForestClassifier(n_estimators=200, random_state=42)
-modelo.fit(X_train, y_train)
+# === DIVISIÓN DE DATOS ===
+X_train, X_test, y_train, y_test = train_test_split(
+    X_scaled, y, test_size=0.2, random_state=42, stratify=y
+)
 
-print(f"✅ Precisión modelo estático: {modelo.score(X_test, y_test):.2%}")
+# === ENTRENAMIENTO CON BARRA DE PROGRESO ===
+print("🧠 Entrenando modelo estático...")
+
+n_estimators = 200
+modelo = RandomForestClassifier(
+    n_estimators=n_estimators,
+    random_state=42,
+    n_jobs=-1,
+    warm_start=True  # permite entrenar en bloques
+)
+
+# Entrenamiento progresivo con barra
+inicio = time.time()
+for i in tqdm(range(1, n_estimators + 1), desc="Progreso", unit="árbol"):
+    modelo.n_estimators = i
+    modelo.fit(X_train, y_train)
+
+fin = time.time()
+
+# === EVALUACIÓN ===
+precision = modelo.score(X_test, y_test)
+print(f"\n✅ Precisión modelo estático: {precision:.2%}")
+print(f"⏱️ Tiempo total de entrenamiento: {fin - inicio:.2f} segundos")
 
 # === GUARDAR MODELO ===
 joblib.dump(modelo, os.path.join(CARPETA_MODELO, "modelo_estatico.pkl"))

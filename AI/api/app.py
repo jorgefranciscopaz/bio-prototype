@@ -1,109 +1,79 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import base64
+import mediapipe as mp
 import cv2
 import numpy as np
 import joblib
-import mediapipe as mp
+import base64
+import os
 import time
-from collections import deque
 
+# ===========================
+# 🔧 CONFIGURACIÓN INICIAL
+# ===========================
 app = Flask(__name__)
 CORS(app)
 
-# === Cargar modelos ===
-modelo_estatico = joblib.load("../modelos/modelo_estatico.pkl")
-modelo_dinamico = joblib.load("../modelos/modelo_dinamico.pkl")
-escalador_estatico = joblib.load("../modelos/escalador_estatico.pkl")
-escalador_dinamico = joblib.load("../modelos/escalador_dinamico.pkl")
+# === Rutas dinámicas ===
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RUTA_MODELOS = os.path.join(BASE_DIR, "modelos")
 
+# === Cargar modelo y escalador ===
+modelo = joblib.load(os.path.join(RUTA_MODELOS, "modelo_estatico.pkl"))
+escalador = joblib.load(os.path.join(RUTA_MODELOS, "escalador_estatico.pkl"))
+
+# === Configurar MediaPipe ===
 mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(
-    static_image_mode=False,  # ✅ modo video
-    max_num_hands=1,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
-)
+hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.7)
 
-# === Variables globales ===
-window = deque(maxlen=10)
-ultima_prediccion = ""
-ultimo_tiempo = 0
-umbral_movimiento = 0.02
-
-def base64_a_imagen(base64_string):
-    """Convierte base64 → OpenCV"""
-    try:
-        img_data = base64.b64decode(base64_string.split(",")[1])
-        np_arr = np.frombuffer(img_data, np.uint8)
-        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-        return cv2.resize(frame, (640, 480))
-    except Exception as e:
-        print("⚠️ Error convirtiendo imagen:", e)
-        return None
-
+# ===========================
+# 🔮 FUNCIÓN DE PREDICCIÓN
+# ===========================
 @app.route("/predict", methods=["POST"])
 def predict():
-    global ultima_prediccion, ultimo_tiempo
-    data = request.get_json()
-
-    if not data or "image" not in data:
-        print("❌ No se recibió imagen en la solicitud.")
-        return jsonify({"prediccion": ""})
-
-    frame = base64_a_imagen(data["image"])
-    if frame is None:
-        print("⚠️ No se pudo decodificar la imagen.")
-        return jsonify({"prediccion": ""})
-
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    result = hands.process(rgb)
-
-    if not result.multi_hand_landmarks:
-        print("🚫 No se detectaron manos en el frame.")
-        return jsonify({"prediccion": ""})
-
-    # === Landmarks detectados ===
-    hand = result.multi_hand_landmarks[0]
-    coords = np.array([[lm.x, lm.y, lm.z] for lm in hand.landmark]).flatten()
-    window.append(coords)
-
-    if len(window) < window.maxlen:
-        print("🕒 Recolectando frames para detectar movimiento...")
-        return jsonify({"prediccion": ultima_prediccion})
-
-    movimiento = np.mean(np.abs(window[-1] - window[0]))
-    tipo = "dinamico" if movimiento > umbral_movimiento else "estatico"
-
-    if tipo == "estatico":
-        X = escalador_estatico.transform([coords])
-        modelo = modelo_estatico
-    else:
-        seq = np.mean(window, axis=0)
-        X = escalador_dinamico.transform([seq])
-        modelo = modelo_dinamico
-
+    inicio = time.time()
     try:
-        probs = modelo.predict_proba(X)[0]
-        pred = modelo.classes_[np.argmax(probs)]
-        confianza = np.max(probs)
+        data = request.get_json()
+        image_data = data["image"].split(",")[1]
+        image_bytes = base64.b64decode(image_data)
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        # === Reproducir las mismas condiciones que tu recolector ===
+        frame = cv2.flip(frame, 1)  # espejo
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # === Procesar con MediaPipe ===
+        results = hands.process(rgb)
+        if not results.multi_hand_landmarks:
+            return jsonify({"prediccion": "Sin mano detectada", "confianza": 0.0})
+
+        # === Extraer landmarks ===
+        hand_landmarks = results.multi_hand_landmarks[0]
+        coords = np.array([[lm.x, lm.y, lm.z] for lm in hand_landmarks.landmark]).flatten()
+
+        # === Escalar exactamente igual que en entrenamiento ===
+        X = escalador.transform([coords])
+        pred = modelo.predict(X)[0]
+        probas = getattr(modelo, "predict_proba", lambda x: [[1.0]])(X)
+        confianza = float(np.max(probas)) if probas is not None else 1.0
+
+        duracion = (time.time() - inicio) * 1000  # ms
+        print(f"[INFO] Predicción: {pred} | Confianza: {confianza:.2f} | Tiempo: {duracion:.1f} ms")
+
+        return jsonify({
+            "prediccion": pred,
+            "confianza": confianza,
+            "tiempo_ms": duracion
+        })
+
     except Exception as e:
-        print("⚠️ Error durante la predicción:", e)
-        pred = ""
-        confianza = 0
+        print("❌ Error en predicción:", e)
+        return jsonify({"error": str(e)})
 
-    tiempo_actual = time.time()
-    if confianza > 0.7 and (tiempo_actual - ultimo_tiempo > 1.5):
-        ultima_prediccion = pred
-        ultimo_tiempo = tiempo_actual
-
-    print(f"✅ Mano detectada | Tipo: {tipo} | Predicción: {ultima_prediccion} | Confianza: {confianza:.2f}")
-    return jsonify({
-        "prediccion": ultima_prediccion,
-        "tipo": tipo,
-        "confianza": round(confianza, 2)
-    })
-
+# ===========================
+# 🚀 EJECUCIÓN LOCAL
+# ===========================
 if __name__ == "__main__":
     print("🚀 Servidor Flask iniciado en http://localhost:5000")
     app.run(host="0.0.0.0", port=5000)

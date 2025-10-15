@@ -1,16 +1,19 @@
 import { useRef, useState, useEffect } from "react";
-import CameraFeed from "../components/CameraFeed";
-import ToggleAIButton from "../components/ToggleAIButton";
+import VideoInterface from "../components/VideoInterface";
+import ControlBar from "../components/ControlBar";
 import PredictionBox from "../components/PredictionBox";
+import "../styles.css"; // incluye el CSS del espejo
 
 export default function Home() {
-  const [isAIActive, setIsAIActive] = useState(false);
+  const [isCameraOn, setIsCameraOn] = useState(false);
+  const [isStaticMode, setIsStaticMode] = useState(false);
+  const [isGestureMode, setIsGestureMode] = useState(false);
   const [prediction, setPrediction] = useState("");
-  const [status, setStatus] = useState("IA desactivada");
-  const videoRef = useRef(null); // 👈 ESTE ref
+  const videoRef = useRef(null);
 
   useEffect(() => {
     let interval;
+
     const sendFrameToAPI = async () => {
       if (!videoRef.current) return;
       const canvas = document.createElement("canvas");
@@ -19,6 +22,7 @@ export default function Home() {
       const ctx = canvas.getContext("2d");
       ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
       const imageBase64 = canvas.toDataURL("image/jpeg");
+
       try {
         const res = await fetch("http://localhost:5000/predict", {
           method: "POST",
@@ -33,24 +37,46 @@ export default function Home() {
       }
     };
 
-    if (isAIActive) {
-      setStatus("IA activada - analizando...");
+    if (isCameraOn && (isStaticMode || isGestureMode)) {
       interval = setInterval(sendFrameToAPI, 1000);
     } else {
-      setStatus("IA desactivada");
       clearInterval(interval);
       setPrediction("");
     }
 
     return () => clearInterval(interval);
-  }, [isAIActive]);
+  }, [isCameraOn, isStaticMode, isGestureMode]);
+
+  const handleCameraToggle = () => {
+    setIsCameraOn(!isCameraOn);
+    if (isCameraOn) {
+      setIsStaticMode(false);
+      setIsGestureMode(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white space-y-4">
-      <CameraFeed ref={videoRef} isActive={isAIActive} />
-      <ToggleAIButton isActive={isAIActive} onToggle={() => setIsAIActive(!isAIActive)} />
-      <p className="text-gray-400">{status}</p>
-      <PredictionBox prediction={prediction} />
+    <div>
+      <header>
+        <div style={{ maxWidth: "1100px", margin: "auto", padding: "0 24px" }}>
+          <h1>H! Sign Language Platform</h1>
+          <p>Detección en tiempo real de lenguaje de señas con IA</p>
+        </div>
+      </header>
+
+      <main>
+        {/* 📸 El video se muestra en espejo, pero el backend procesa la imagen normal */}
+        <VideoInterface isCameraOn={isCameraOn} ref={videoRef} />
+        <PredictionBox prediction={prediction} />
+        <ControlBar
+          isCameraOn={isCameraOn}
+          onCameraToggle={handleCameraToggle}
+          isStaticMode={isStaticMode}
+          onStaticModeToggle={() => setIsStaticMode(!isStaticMode)}
+          isGestureMode={isGestureMode}
+          onGestureModeToggle={() => setIsGestureMode(!isGestureMode)}
+        />
+      </main>
     </div>
   );
 }
