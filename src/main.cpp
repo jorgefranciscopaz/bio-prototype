@@ -1,44 +1,52 @@
 #include <Arduino.h>
 
-// === Pines de sensores analógicos ===
-const int pinDedo1 = 34;  // Gordo
-const int pinDedo2 = 35;  // Índice
-const int pinDedo3 = 32;  // Medio
-const int pinDedo4 = 39;  // Anular
-const int pinDedo5 = 36;  // Meñique
+// === Pines de sensores analógicos (usar ADC1) ===
+const int pinMenique = 14;
+const int pinAnular  = 27;
+const int pinMedio   = 26;
+const int pinIndice  = 25;
+const int pinGordo   = 33;
 
-// === Función para promediar lecturas de cada dedo ===
-int leerPromediado(int pin, int muestras = 10) {
+// === Configuración del ADC ===
+void configurarADC() {
+  analogReadResolution(12);       // Rango 0–4095
+  analogSetAttenuation(ADC_11db); // Soporta hasta ~3.3V
+}
+
+// === Lectura suavizada (sobremuestreo) ===
+int leerSuavizado(int pin, int muestras = 10) {
   long suma = 0;
   for (int i = 0; i < muestras; i++) {
     suma += analogRead(pin);
-    delay(5);  // pequeña pausa para estabilizar la lectura
+    delay(3); // pequeña pausa entre lecturas
   }
   return suma / muestras;
-}
-
-// === Función para promedio total de la mano ===
-int calcularPromedioTotal(int d1, int d2, int d3, int d4, int d5) {
-  return (d1 + d2 + d3 + d4 + d5) / 5;
 }
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  Serial.println("🔍 Iniciando lectura de sensores de los dedos...");
+  configurarADC();
+
+  pinMode(pinMenique, INPUT);
+  pinMode(pinAnular,  INPUT);
+  pinMode(pinMedio,   INPUT);
+  pinMode(pinIndice,  INPUT);
+  pinMode(pinGordo,   INPUT);
+
+  Serial.println("=== Lectura continua de sensores flex (valores crudos) ===");
 }
 
 void loop() {
-  int dedo1 = leerPromediado(pinDedo1);
-  int dedo2 = leerPromediado(pinDedo2);
-  int dedo3 = leerPromediado(pinDedo3);
-  int dedo4 = leerPromediado(pinDedo4);
-  int dedo5 = leerPromediado(pinDedo5);
+  // Leer suavizado (10 muestras por dedo)
+  int vMenique = leerSuavizado(pinMenique);
+  int vAnular  = leerSuavizado(pinAnular);
+  int vMedio   = leerSuavizado(pinMedio);
+  int vIndice  = leerSuavizado(pinIndice);
+  int vGordo   = leerSuavizado(pinGordo);
 
-  int promedio = calcularPromedioTotal(dedo1, dedo2, dedo3, dedo4, dedo5);
+  // Enviar datos en formato CSV
+  Serial.printf("%d,%d,%d,%d,%d\n", vMenique, vAnular, vMedio, vIndice, vGordo);
 
-Serial.printf("%d,%d,%d,%d,%d\n", dedo1, dedo2, dedo3, dedo4, dedo5);
-
-
-  delay(5000);  // Espera antes de la próxima lectura
+  delay(150); // 6-7 lecturas por segundo
 }
