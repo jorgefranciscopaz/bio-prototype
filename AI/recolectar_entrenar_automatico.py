@@ -30,6 +30,7 @@ hands = mp_hands.Hands(
 )
 mp_drawing = mp.solutions.drawing_utils
 
+
 # === FUNCIONES ===
 def crear_sesion(nombre_usuario):
     fecha = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -46,10 +47,17 @@ def guardar_landmarks(label, landmarks, writer):
     writer.writerow(fila)
 
 
-def recolectar_letra(label, carpeta_sesion, muestras=100):
+def recolectar_letra(label, carpeta_sesion, muestras=300, indice=0, total=24):
     archivo_csv = os.path.join(carpeta_sesion, f"{label}.csv")
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+    # === Ajustar resolución de cámara ===
+    WIDTH, HEIGHT = 2560, 1600
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
+
     contador = 0
+    intentos_fallidos = 0
 
     with open(archivo_csv, "w", newline="") as f:
         writer = csv.writer(f)
@@ -65,6 +73,11 @@ def recolectar_letra(label, carpeta_sesion, muestras=100):
             print(f"Comienza en {i}...")
             time.sleep(1)
 
+        # Crear ventana con tamaño específico
+        cv2.namedWindow("Recolección Express", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Recolección Express", WIDTH, HEIGHT)
+        cv2.moveWindow("Recolección Express", 0, 0)
+
         while contador < muestras:
             ret, frame = cap.read()
             if not ret:
@@ -75,32 +88,68 @@ def recolectar_letra(label, carpeta_sesion, muestras=100):
             resultados = hands.process(frame_rgb)
 
             if resultados.multi_hand_landmarks:
+                intentos_fallidos = 0
                 for hand_landmarks in resultados.multi_hand_landmarks:
                     guardar_landmarks(label, hand_landmarks.landmark, writer)
                     contador += 1
-                    mp_drawing.draw_landmarks(
-                        frame, hand_landmarks, mp_hands.HAND_CONNECTIONS
-                    )
+                    mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            else:
+                intentos_fallidos += 1
+                cv2.putText(
+                    frame,
+                    "⚠️ Mano no detectada, ajusta la posición",
+                    (60, frame.shape[0] - 40),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    (0, 0, 255),
+                    2,
+                )
 
+            # Información de progreso
             cv2.putText(
                 frame,
-                f"Letra: {label} | {contador}/{muestras}",
-                (10, 30),
+                f"Letra {indice+1}/{total}: {label}",
+                (60, 60),
                 cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 255, 0),
-                2,
+                1.0,
+                (0, 255, 255),
+                3,
             )
-            progreso = int((contador / muestras) * 300)
-            cv2.rectangle(frame, (10, 50), (10 + progreso, 70), (0, 255, 0), -1)
-            cv2.imshow("Recolección Express", frame)
+            cv2.putText(
+                frame,
+                f"Muestras: {contador}/{muestras}",
+                (60, 110),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1.0,
+                (0, 255, 0),
+                3,
+            )
 
-            if cv2.waitKey(1) & 0xFF == ord("q"):
+            # Barra de progreso
+            progreso = int((contador / muestras) * int(frame.shape[1] * 0.9))
+            cv2.rectangle(frame, (60, 130), (60 + progreso, 160), (0, 255, 0), -1)
+
+            cv2.imshow("Recolección Express", frame)
+            key = cv2.waitKey(1) & 0xFF
+
+            # Detener manualmente
+            if key == ord("q"):
+                print("⏹️ Detenido manualmente.")
                 break
+
+            # Si no hay detección por más de 10 segundos (~100 frames)
+            if intentos_fallidos > 100:
+                print("⚠️ Mano no detectada por mucho tiempo. Reintentando...")
+                intentos_fallidos = 0
+                time.sleep(2)
 
         cap.release()
         cv2.destroyAllWindows()
-        print(f"✅ Letra '{label}' completada ({contador} muestras guardadas)")
+
+        if contador == 0:
+            print(f"❌ Letra '{label}' falló: no se detectaron manos.")
+        else:
+            print(f"✅ Letra '{label}' completada ({contador} muestras guardadas)")
 
 
 def entrenar_modelo(nombre_sesion):
@@ -144,12 +193,18 @@ if __name__ == "__main__":
     usuario = input("👤 Nombre del usuario o sesión: ").strip().replace(" ", "_")
     carpeta_sesion = crear_sesion(usuario)
 
-    # Letras a capturar (orden alfabético sin J y Z)
-    letras = list("ABCDEFGHIKLMNOPQRSTUVWX Y".replace(" ", ""))
+    # Letras del alfabeto americano sin J y Z
+    letras = [
+        "A", "B", "C", "D", "E", "F", "G", "H", "I",
+        "K", "L", "M", "N", "O", "P", "Q",
+        "R", "S", "T", "U", "V", "W", "X", "Y"
+    ]
 
-    for letra in letras:
-        recolectar_letra(letra, carpeta_sesion, muestras=100)
+    total = len(letras)
 
-    # Entrenar automáticamente
+    for idx, letra in enumerate(letras):
+        recolectar_letra(letra, carpeta_sesion, muestras=300, indice=idx, total=total)
+
+    # Entrenamiento automático
     nombre_sesion = os.path.basename(carpeta_sesion)
     entrenar_modelo(nombre_sesion)
