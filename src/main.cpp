@@ -1,19 +1,25 @@
+/**
+ * Guante inteligente - Lecturas analógicas continuas por dedo.
+ * Pines actualizados a ADC1 (compatibles con Wi-Fi activo)
+ * Solo lectura de valores analógicos (sin Firebase).
+ */
+
 #include <Arduino.h>
 
-// === Pines de sensores analógicos (usar ADC1) ===
-const int pinMenique = 14;
-const int pinAnular  = 27;
-const int pinMedio   = 26;
-const int pinIndice  = 25;
-const int pinGordo   = 33;
+// === Pines del guante (solo ADC1, compatibles con Wi-Fi) ===
+const int pinMenique = 36;  // ADC1_CH0
+const int pinAnular  = 39;  // ADC1_CH3
+const int pinMedio   = 34;  // ADC1_CH6
+const int pinIndice  = 35;  // ADC1_CH7
+const int pinGordo   = 33;  // ADC1_CH5
 
-// === Configuración del ADC ===
+// === CONFIGURACIÓN DEL ADC ===
 void configurarADC() {
   analogReadResolution(12);       // Rango 0–4095
-  analogSetAttenuation(ADC_11db); // Soporta hasta ~3.3V
+  analogSetAttenuation(ADC_11db); // Hasta ~3.3V
 }
 
-// === Lectura suavizada (sobremuestreo) ===
+// === LECTURA SUAVIZADA ===
 int leerSuavizado(int pin, int muestras = 10) {
   long suma = 0;
   for (int i = 0; i < muestras; i++) {
@@ -23,6 +29,7 @@ int leerSuavizado(int pin, int muestras = 10) {
   return suma / muestras;
 }
 
+// === SETUP ===
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -37,16 +44,16 @@ void setup() {
   Serial.println("=== Lectura continua de sensores flex (valores crudos) ===");
 }
 
+// === LOOP PRINCIPAL ===
 void loop() {
-  // Leer suavizado (10 muestras por dedo)
   int vMenique = leerSuavizado(pinMenique);
   int vAnular  = leerSuavizado(pinAnular);
   int vMedio   = leerSuavizado(pinMedio);
   int vIndice  = leerSuavizado(pinIndice);
   int vGordo   = leerSuavizado(pinGordo);
 
-  // Enviar datos en formato CSV
-  Serial.printf("%d,%d,%d,%d,%d\n", vMenique, vAnular, vMedio, vIndice, vGordo);
+  Serial.printf("Menique:%d | Anular:%d | Medio:%d | Indice:%d | Gordo:%d\n",
+                vMenique, vAnular, vMedio, vIndice, vGordo);
 
-  delay(150); // 6-7 lecturas por segundo
-}
+  delay(1000); // refresco cada 200 ms
+  }
