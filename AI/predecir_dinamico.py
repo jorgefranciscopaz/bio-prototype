@@ -16,7 +16,6 @@ escalador_dinamico = joblib.load(os.path.join(CARPETA_MODELOS, "escalador_dinami
 
 # === CONFIGURACIÓN DE MEDIAPIPE ===
 mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=1,
@@ -26,7 +25,7 @@ hands = mp_hands.Hands(
 
 # === BUFFER PARA GESTOS (SUAVIZADO DE PREDICCIÓN) ===
 ventana_predicciones = deque(maxlen=15)
-ultima_prediccion = ""
+ultima_prediccion = "Sin detección"
 ultimo_tiempo = time.time()
 
 # === FUNCIÓN PARA EXTRAER LANDMARKS ===
@@ -40,10 +39,15 @@ def extraer_landmarks(landmarks):
 def predecir_gestos():
     global ultima_prediccion, ultimo_tiempo
 
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
     if not cap.isOpened():
         print("❌ No se pudo acceder a la cámara.")
         return
+
+    # Resolución reducida para más fluidez
+    WIDTH, HEIGHT = 640, 480
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
 
     print("🎥 Iniciando detección de gestos dinámicos... Presiona 'q' para salir.")
 
@@ -53,28 +57,53 @@ def predecir_gestos():
             break
 
         frame = cv2.flip(frame, 1)
-        h, w, _ = frame.shape
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         resultados = hands.process(rgb)
 
+        prediccion_actual = None  # Por defecto, sin nueva predicción
+
         if resultados.multi_hand_landmarks:
             for hand_landmarks in resultados.multi_hand_landmarks:
-                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                # Si no deseas ver los landmarks, comenta la línea siguiente:
+                # mp.solutions.drawing_utils.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
                 vector = extraer_landmarks(hand_landmarks)
                 X = escalador_dinamico.transform([vector])
-                prediccion = modelo_dinamico.predict(X)[0]
+                pred = modelo_dinamico.predict(X)[0]
 
-                ventana_predicciones.append(prediccion)
+                ventana_predicciones.append(pred)
                 mas_comun = Counter(ventana_predicciones).most_common(1)[0][0]
 
-                # Control de estabilidad (2 segundos mínimo entre cambios)
+                # Estabilizar cambios: 2 segundos mínimo entre gestos distintos
                 if mas_comun != ultima_prediccion and (time.time() - ultimo_tiempo) > 2:
                     ultima_prediccion = mas_comun
                     ultimo_tiempo = time.time()
 
-                cv2.putText(frame, f"Gesto: {ultima_prediccion}", (10, 40),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 200, 255), 3, cv2.LINE_AA)
+                prediccion_actual = mas_comun
+
+        # === Mostrar el último gesto detectado (aunque no haya mano) ===
+        texto = f"Gesto detectado: {ultima_prediccion}"
+        cv2.putText(
+            frame,
+            texto,
+            (40, 80),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1.2,
+            (0, 255, 255),
+            3,
+            cv2.LINE_AA
+        )
+
+        # Instrucción al usuario
+        cv2.putText(
+            frame,
+            "Presiona Q para salir",
+            (40, HEIGHT - 30),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            (200, 200, 200),
+            2,
+        )
 
         cv2.imshow("🖐️ Detección de gestos dinámicos", frame)
 
@@ -84,5 +113,7 @@ def predecir_gestos():
     cap.release()
     cv2.destroyAllWindows()
 
+
+# === MAIN ===
 if __name__ == "__main__":
     predecir_gestos()
