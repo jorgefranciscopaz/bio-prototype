@@ -52,8 +52,8 @@ void loop() {
   int vIndice  = leerSuavizado(pinIndice);
   int vGordo   = leerSuavizado(pinGordo);
 
-  Serial.printf("Menique:%d | Anular:%d | Medio:%d | Indice:%d | Gordo:%d\n",
-                vMenique, vAnular, vMedio, vIndice, vGordo);
+  // ✅ Enviar en formato CSV compatible con Python
+  Serial.printf("%d,%d,%d,%d,%d\n", vMenique, vAnular, vMedio, vIndice, vGordo);
 
-  delay(1000); // refresco cada 200 ms
-  }
+  delay(100); // 10 lecturas por segundo aprox.
+}

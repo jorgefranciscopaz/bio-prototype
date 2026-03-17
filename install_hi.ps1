@@ -56,6 +56,8 @@ tqdm==4.66.4
 protobuf==3.20.3
 matplotlib==3.8.4
 seaborn==0.13.2
+pyttsx3==2.90
+
 "@ | Out-File requirements.txt -Encoding UTF8
 
 # -------------------------------

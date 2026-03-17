@@ -11,7 +11,6 @@ CARPETA_MODELOS = os.path.join(BASE_DIR, "AI", "modelos_personalizados")
 
 # === MEDIA PIPE ===
 mp_hands = mp.solutions.hands
-mp_drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=1,
@@ -51,8 +50,8 @@ def elegir_modelo():
 def predecir_en_tiempo_real(modelo, escalador):
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
-    # === Ajustar resolución de cámara ===
-    WIDTH, HEIGHT = 2560, 1600
+    # === Resolución reducida para más fluidez ===
+    WIDTH, HEIGHT = 640, 480
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
 
@@ -77,35 +76,38 @@ def predecir_en_tiempo_real(modelo, escalador):
                 data = []
                 for lm in hand_landmarks.landmark:
                     data.extend([lm.x, lm.y, lm.z])
+
                 X = np.array(data).reshape(1, -1)
                 X_scaled = escalador.transform(X)
                 pred = modelo.predict(X_scaled)[0]
 
-                # Calcular "confianza" a partir de probabilidades si el modelo lo soporta
+                # Calcular confianza si el modelo lo soporta
                 if hasattr(modelo, "predict_proba"):
                     conf = modelo.predict_proba(X_scaled).max()
                 else:
-                    conf = 1.0  # fallback
+                    conf = 1.0
+
                 confianza_actual = conf
                 prediccion_actual = pred
 
-                # Dibujar landmarks
-                mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+        else:
+            prediccion_actual = "Sin mano detectada"
+            confianza_actual = 0.0
 
-        # Mostrar texto
+        # === Mostrar solo texto (sin landmarks) ===
         cv2.putText(
             frame,
             f"Predicción: {prediccion_actual}",
-            (60, 80),
+            (40, 80),
             cv2.FONT_HERSHEY_SIMPLEX,
-            1.2,
+            1.1,
             (0, 255, 255),
             3,
         )
         cv2.putText(
             frame,
             f"Confianza: {confianza_actual*100:.2f}%",
-            (60, 130),
+            (40, 130),
             cv2.FONT_HERSHEY_SIMPLEX,
             1.0,
             (0, 255, 0),
@@ -113,6 +115,7 @@ def predecir_en_tiempo_real(modelo, escalador):
         )
 
         cv2.imshow("🧠 Predicción Personalizada", frame)
+
         key = cv2.waitKey(1) & 0xFF
         if key == ord("q"):
             print("\n🛑 Finalizando predicción...\n")
@@ -124,7 +127,7 @@ def predecir_en_tiempo_real(modelo, escalador):
 
 # === MAIN ===
 if __name__ == "__main__":
-    print("=== 🤖 Sistema de Predicción Personalizada ===")
+    print("=== 🤖 Sistema de Predicción Personalizada Optimizado ===")
 
     modelo_path, escalador_path, nombre = elegir_modelo()
     print(f"\n📦 Modelo seleccionado: {nombre}\n")

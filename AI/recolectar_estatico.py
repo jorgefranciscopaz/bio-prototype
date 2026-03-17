@@ -7,7 +7,7 @@ import time
 
 # === CONFIGURACIÓN GLOBAL ===
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # raíz del proyecto
-CARPETA_DATOS = os.path.join(BASE_DIR, "AI", "data", "estaticos")
+CARPETA_DATOS = os.path.join(BASE_DIR, "AI", "data", "numeros")
 os.makedirs(CARPETA_DATOS, exist_ok=True)
 
 MAX_MUESTRAS = 20000   # ← número máximo de muestras por letra

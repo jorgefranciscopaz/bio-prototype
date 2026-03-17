@@ -13,6 +13,8 @@ Requisitos:
 - Tener el archivo serviceAccountKey.json en la raíz del proyecto
 """
 
+
+
 import serial
 import joblib
 import os

@@ -1,70 +1,87 @@
-# === ENTORNOS Y CONFIGURACIÓN ===
+# ===============================
+# Python environments & cache
+# ===============================
+venv/
 .venv/
-.pio/
-.vscode/
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+# ===============================
+# IDEs
+# ===============================
+.vscode/
+.idea/
+*.code-workspace
+
+# ===============================
+# Logs & temp files
+# ===============================
 *.log
 *.tmp
+logs/
+output/
+results/
 
-# === MODELOS Y ESCALADORES (.pkl) ===
-AI/modelos/*.pkl
+# ===============================
+# Machine Learning artifacts
+# ===============================
+AI/modelos/**/*.pkl
+AI/data/**/*.csv
+*.h5
+AI/modelos
+AI/modelos_personalizados
+AI/serviceAccountKey.json
+# ===============================
+# Firebase (SENSITIVE)
+# ===============================
+firebase/**/serviceAccountKey.json
+firebase/**/credentials.json
+.env
+/secrets
+/AI/config/*.json
 
-# === DATOS DE ENTRENAMIENTO (.csv) ===
-AI/data/estaticos/*.csv
-AI/data/dinamicos/*.csv
-
-# === ARCHIVOS TEMPORALES Y CACHE ===
-AI/__pycache__/
-AI/*/__pycache__/
-AI/*.log
-
-# === ARCHIVOS DE SISTEMA ===
+# ===============================
+# OS files
+# ===============================
 .DS_Store
 Thumbs.db
 
-# === CONFIGURACIÓN Y ENTORNOS ===
-.env
-*.ini
-*.json
-
-# === RESULTADOS, BACKUPS Y EXPORTS ===
+# ===============================
+# Backups & exports
+# ===============================
 *.bak
 *.zip
 *.tar
 *.gz
 *.xlsx
 *.xls
-*.h5
+*.pdf
+*.docx
 
-# === COMPILACIONES O BINARIOS (PLATFORMIO / C++) ===
-client/.pio/
-include/*.o
-include/*.obj
-lib/*.o
-lib/*.obj
-src/*.o
-src/*.obj
-test/*.o
-test/*.obj
-build/
-dist/
-
-# === ARCHIVOS DE IDE ===
-.idea/
-*.code-workspace
-
-# === ARCHIVOS GENERADOS POR USUARIO ===
+# ===============================
+# Media files
+# ===============================
 *.mp4
 *.avi
 *.jpg
 *.png
 *.jpeg
 
-# === ARCHIVOS DE DOCUMENTACIÓN Y TEMPORALES ===
-*.pdf
-*.docx
-*.tmp
-*.bak
+# ===============================
+# PlatformIO / C++ builds
+# ===============================
+.pio/
+build/
+dist/
+**/*.o
+**/*.obj
+
+# ===============================
+# Node / Frontend (future-proof)
+# ===============================
+node_modules/
+.cache/

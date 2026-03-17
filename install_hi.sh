@@ -43,24 +43,6 @@ source venv/bin/activate
 python -m pip install --upgrade pip
 
 # -------------------------------
-# Crear requirements.txt
-# -------------------------------
-cat > requirements.txt << EOF
-opencv-python==4.9.0.80
-mediapipe==0.10.9
-numpy==1.26.4
-pandas==2.2.2
-scipy==1.11.4
-scikit-learn==1.4.2
-joblib==1.4.2
-firebase-admin==6.5.0
-tqdm==4.66.4
-protobuf==4.25.3
-matplotlib==3.8.4
-seaborn==0.13.2
-EOF
-
-# -------------------------------
 # Instalar dependencias
 # -------------------------------
 echo "⬇️ Instalando dependencias..."
